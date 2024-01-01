@@ -1,9 +1,9 @@
 /*
-  Moisture Detected Power Cut Off System for Plugs & Plug Sockets
+  Plug Base Device Code - Moisture Detected Power Cut Off System
 
   Description:
-  This Arduino code is designed for the plug base microcontroller, implementing a Moisture Detected Power Cut-Off System.
-  The system actively monitors capacitive sensors and conductive elements to detect the presence of a human hand and potential conductive materials during the plugin process. If hazards are detected, the system wirelessly communicates with plug tops and initiates a power cut-off mechanism to prevent hazards.
+  This Arduino code is designed for the plug base device in a Moisture Detected Power Cut Off System.
+  The system uses capacitive sensors to detect the presence of a human hand and tiny conductors to sense potential conductive materials during the plugin process. If hazards are detected, the plug base wirelessly communicates with plug tops to initiate a power cut-off mechanism.
 
   Author:
   Isuru Ranaweera
@@ -20,7 +20,7 @@
 
   Key Components:
   - Capacitive sensors for detecting human hand touch.
-  - Conductive elements to sense potential conductive materials.
+  - Tiny conductors to sense potential conductive materials.
   - 433MHz RF communication for wireless communication between plug bases and plug tops.
 
   How It Works:
@@ -33,73 +33,68 @@
 
 */
 
+// Code for ATmega328 (arduino Uno/Nano)
 
-// Code for Attiny 85A
-
-#include <CapacitiveSensor.h>
+#define Relay 4
+#define LED 6
 #include <RCSwitch.h>
 
-#define TX_Pin 0
-#define Short_Sensor 4
-#define Detect_LED 1
-
-CapacitiveSensor cs_2_3 = CapacitiveSensor(2, 3);
 RCSwitch mySwitch = RCSwitch();
 
-long val = 0;
-long val1 = 0;
-boolean b = true;
-boolean msg = false;
-
 void setup() {
-  pinMode(Detect_LED, OUTPUT);
-  pinMode(Short_Sensor, INPUT);
-  mySwitch.enableTransmit(TX_Pin);
+  pinMode(Relay, OUTPUT);
+  pinMode(LED, OUTPUT);
+  Serial.begin(9600);
+  mySwitch.enableReceive(0);
 }
+
+int val;
+long on_time;
+boolean state = false;
 
 void loop() {
-  long start = millis();
-  long total1 = cs_2_3.capacitiveSensor(30);
-  val1 = map(total1, 0, 320000, 0, 100);
+  Serial.print(millis());
+  Serial.print(" / ");
 
-  int Short_Read = analogRead(Short_Sensor);
-  float Short_val = Short_Read * (5.0 / 1023.0);
-
-  if (val1 > 11 && Short_val < 1.4) {
-    digitalWrite(Detect_LED, HIGH);
-    delay(100);
-    digitalWrite(Detect_LED, LOW);
-    sw_send(1);
-    msg = true;
+  if (mySwitch.available()) {
+    val = mySwitch.getReceivedValue();
+    mySwitch.resetAvailable();
   }
 
-  if (msg == true) {
-    if (val1 < 11 || Short_val > 1.4) {
-      digitalWrite(Detect_LED, LOW);
-      sw_send(0);
-      msg = false;
-    }
+  if (val == 4001) {
+    digitalWrite(Relay, HIGH);
+    digitalWrite(LED, HIGH);
+    delay(2000);
+    on_time = millis();
+    state = true;
+    val = 0;
+    // E. I. M. RANAWEERA | BT/EE/21/22 44
   }
 
-  digitalWrite(Detect_LED, HIGH);
-  delay(10);
-  digitalWrite(Detect_LED, LOW);
-  delay(20);
+  if (state == true && millis() - on_time > 10000) {
+    digitalWrite(Relay, LOW);
+    digitalWrite(LED, LOW);
+    delay(20);
+    digitalWrite(LED, HIGH);
+    delay(20);
+    digitalWrite(LED, LOW);
+    val = 0;
+    state = false;
+    on_time = 0;
+  }
+
+  if (val == 4101) {
+    digitalWrite(Relay, LOW);
+    digitalWrite(LED, LOW);
+    delay(20);
+    digitalWrite(LED, HIGH);
+    delay(20);
+    digitalWrite(LED, LOW);
+    val = 0;
+    state = false;
+    on_time = 0;
+  }
+
+  Serial.println(on_time);
 }
 
-void sw_send(boolean val) {
-  if (val == 1) {
-    mySwitch.send(4001, 24);
-    delay(500);
-    mySwitch.send(4001, 24);
-    delay(500);
-    digitalWrite(Detect_LED, HIGH);
-    delay(50);
-    digitalWrite(Detect_LED, LOW);
-  } else {
-    mySwitch.send(4101, 24);
-    delay(500);
-    mySwitch.send(4101, 24);
-    delay(500);
-  }
-}
