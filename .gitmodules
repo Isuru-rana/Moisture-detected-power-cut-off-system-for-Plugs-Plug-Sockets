@@ -1,0 +1,6 @@
+[submodule "libraries/CapacitiveSensor"]
+	path = libraries/CapacitiveSensor
+	url = https://github.com/PaulStoffregen/CapacitiveSensor.git
+[submodule "libraries/rc-switch"]
+	path = libraries/rc-switch
+	url = https://github.com/sui77/rc-switch.git
